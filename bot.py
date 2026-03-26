@@ -9,54 +9,52 @@ from datetime import timedelta
 GULAG_CHANNEL_NAME = "gulag"
 TIMEOUT_SECONDS = 60
 
-# Full tankie mode - anything remotely capitalist
 BANNED_WORDS = [
-    # Core capitalism
     "profit", "profits", "profitable", "capital", "capitalism", "capitalist",
     "capitalists", "market", "markets", "free market", "stock", "stocks",
     "shares", "shareholder", "shareholders", "dividend", "dividends",
     "invest", "investing", "investment", "investor", "investors",
     "entrepreneur", "entrepreneurship", "startup", "startups",
-
-    # Ownership & property
     "landlord", "landlords", "landlady", "tenant", "rent", "renting",
     "property", "properties", "real estate", "mortgage", "loan", "loans",
     "debt", "debts", "interest rate", "bank", "banking", "banks",
     "own", "owned", "owner", "owners", "ownership", "private",
-    "mine", "my property", "buy", "bought", "sell", "sold", "purchase",
-
-    # Work & exploitation
+    "buy", "bought", "sell", "sold", "purchase",
     "boss", "bosses", "employer", "employers", "employee", "employees",
     "wage", "wages", "salary", "salaries", "hire", "hired", "firing",
     "fired", "layoff", "layoffs", "corporate", "corporation", "corporations",
     "company", "companies", "business", "businesses", "firm", "firms",
     "ceo", "cfo", "executive", "executives", "manager", "managers",
     "management", "supervisor", "supervisors",
-
-    # Money & wealth
     "money", "cash", "rich", "wealthy", "wealth", "billionaire", "billionaires",
-    "millionaire", "millionaires", "fortune", "fortunes", "luxur", "luxury",
+    "millionaire", "millionaires", "fortune", "fortunes", "luxury",
     "expensive", "afford", "price", "prices", "cost", "costs", "fee", "fees",
     "tax", "taxes", "tariff", "tariffs",
-
-    # Right-wing politics
     "conservative", "conservatives", "republican", "republicans", "tory",
     "tories", "libertarian", "libertarians", "neoliberal", "neoliberalism",
     "right wing", "right-wing", "far right", "fascist", "fascism", "nazi",
     "neocon", "neocons",
-
-    # Consumerism
     "brand", "brands", "branded", "consumer", "consumers", "consumerism",
-    "advertis", "advertising", "advertisement", "ads", "marketing",
+    "advertising", "advertisement", "ads", "marketing",
     "product", "products", "commodity", "commodities",
-
-    # Misc capitalist vibes
     "grind", "hustle", "hustling", "side hustle", "passive income",
     "nft", "crypto", "bitcoin", "blockchain", "web3",
     "meritocracy", "bootstraps", "self made",
 ]
 
-# Gulag responses for public shaming
+COMMUNIST_PRAISE_WORDS = [
+    "communism", "communist", "comrade", "comrades", "solidarity",
+    "proletariat", "workers", "revolution", "revolutionary",
+    "marxism", "marxist", "marx", "engels", "lenin", "leninist",
+    "socialism", "socialist", "collective", "collectively",
+    "means of production", "class struggle", "bourgeoisie",
+    "vanguard", "dialectic", "materialism", "manifesto",
+    "seize", "workers unite", "workers of the world",
+    "glory to", "long live", "down with capitalism",
+    "anti-capitalist", "anticapitalist", "leftist", "left wing",
+    "anarchism", "anarchist", "mutual aid", "commune",
+]
+
 GULAG_MESSAGES = [
     "🚨 **CAPITALIST DETECTED** 🚨\n{mention} has been sent to the gulag for saying `{word}`!\nThe people demand re-education.",
     "⛏️ {mention} thought they could sneak some bourgeois language past the Commissar. They were wrong. Gulag time for saying `{word}`.",
@@ -64,6 +62,17 @@ GULAG_MESSAGES = [
     "📋 **CITIZEN REPORT FILED**\n{mention} said `{word}`, a known capitalist term. The Commissar has issued a {timeout} second sentence.",
     "🔴 BOURGEOIS ALERT: {mention} said `{word}`. This ideological deviation will not be tolerated. Timeout: {timeout} seconds. Glory to the revolution! ✊",
     "⚔️ The revolution does not tolerate `{word}`. {mention} has been escorted to the gulag for {timeout} seconds of mandatory dialectical materialism study.",
+]
+
+PRAISE_MESSAGES = [
+    "✊ {mention} shows excellent class consciousness by mentioning `{word}`! The Party is pleased. 🚩",
+    "🚩 AH YES! {mention} speaks the language of the revolution! `{word}` — a truly beautiful word. The Commissar approves!",
+    "📖 {mention} has clearly studied their Marx! Mentioning `{word}` warms the Commissar's heart. Glory to the struggle! ✊",
+    "🌹 The proletariat thanks {mention} for spreading the word of `{word}`! This is exactly the kind of revolutionary spirit we need!",
+    "⭐ OUTSTANDING IDEOLOGICAL PURITY! {mention} said `{word}`. The Commissar awards you one (1) ration of extra bread. 🍞✊",
+    "🔴 {mention} is a TRUE comrade! `{word}` — the Commissar shed a single tear of joy. The revolution is inevitable! 🚩",
+    "✨ The Party recognizes {mention} for their correct usage of `{word}`. You are an example to all comrades! ✊🚩",
+    "📣 ATTENTION ALL COMRADES: {mention} said `{word}` and has proven themselves a loyal servant of the revolution! 🌹",
 ]
 
 # ── BOT SETUP ───────────────────────────────────────────────────────────────
@@ -85,18 +94,33 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # Ignore bots and DMs
     if message.author.bot:
         return
     if not message.guild:
         return
 
-    # Ignore admins/mods (they can say what they want, comrade)
+    content_lower = message.content.lower()
+
+    # Check for communist praise words FIRST
+    found_praise = None
+    for word in COMMUNIST_PRAISE_WORDS:
+        if word in content_lower:
+            found_praise = word
+            break
+
+    if found_praise:
+        praise_msg = random.choice(PRAISE_MESSAGES).format(
+            mention=message.author.mention,
+            word=found_praise
+        )
+        await message.channel.send(praise_msg)
+        await bot.process_commands(message)
+        return  # Don't check banned words if they said something communist
+
+    # Admins exempt from banned words
     if message.author.guild_permissions.administrator:
         await bot.process_commands(message)
         return
-
-    content_lower = message.content.lower()
 
     # Check for banned words
     found_word = None
@@ -106,13 +130,11 @@ async def on_message(message):
             break
 
     if found_word:
-        # Delete the capitalist propaganda
         try:
             await message.delete()
         except discord.Forbidden:
             pass
 
-        # Timeout the counter-revolutionary
         try:
             await message.author.timeout(
                 timedelta(seconds=TIMEOUT_SECONDS),
@@ -121,7 +143,6 @@ async def on_message(message):
         except discord.Forbidden:
             pass
 
-        # Find or create the gulag channel
         gulag_channel = discord.utils.get(message.guild.channels, name=GULAG_CHANNEL_NAME)
         if gulag_channel is None:
             try:
@@ -132,7 +153,6 @@ async def on_message(message):
             except discord.Forbidden:
                 return
 
-        # Post the shame message
         shame_msg = random.choice(GULAG_MESSAGES).format(
             mention=message.author.mention,
             word=found_word,
@@ -181,7 +201,6 @@ async def free_command(interaction: discord.Interaction, member: discord.Member)
 
 @bot.tree.command(name="banned_words", description="See the list of banned capitalist words")
 async def banned_words_command(interaction: discord.Interaction):
-    # Split into chunks so it fits in a message
     words = ", ".join(f"`{w}`" for w in BANNED_WORDS[:40])
     await interaction.response.send_message(
         f"🚩 **Banned Capitalist Terms (first 40):**\n{words}\n\n...and {len(BANNED_WORDS) - 40} more. Stay vigilant, comrade!",
