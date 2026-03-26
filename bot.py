@@ -101,12 +101,32 @@ async def on_message(message):
 
     content_lower = message.content.lower()
 
-    # Check for communist praise words FIRST
+    NEGATIVE_WORDS = [
+        "hate", "hating", "hates", "against", "anti",
+        "ban", "banned", "destroy", "kill", "bad", "worst",
+        "stupid", "dumb", "gross", "eww", "ew", "yikes",
+        "dont like", "don't like", "dislike", "disgusting",
+        "terrible", "awful", "cringe", "trash", "garbage",
+        "down with", "death to", "away with",
+        "isnt good", "isn't good", "is bad", "is terrible",
+        "is trash", "is stupid", "is dumb", "is awful",
+        "is cringe", "is gross", "is worst", "not good",
+        "not great", "not real", "doesn't work", "doesnt work",
+        "will fail", "has failed", "never works", "sucks",
+        "is fake", "is a lie", "is wrong",
+    ]
+
     found_praise = None
     for word in COMMUNIST_PRAISE_WORDS:
         if word in content_lower:
-            found_praise = word
-            break
+            word_index = content_lower.find(word)
+            # Check 40 chars before AND after the word
+            context_before = content_lower[max(0, word_index - 40):word_index]
+            context_after = content_lower[word_index:min(len(content_lower), word_index + 40)]
+            is_negative = any(neg in context_before or neg in context_after for neg in NEGATIVE_WORDS)
+            if not is_negative:
+                found_praise = word
+                break
 
     if found_praise:
         praise_msg = random.choice(PRAISE_MESSAGES).format(
