@@ -101,7 +101,7 @@ async def on_message(message):
 
     content_lower = message.content.lower()
 
-    NEGATIVE_WORDS = [
+ NEGATIVE_WORDS = [
         "hate", "hating", "hates", "against", "anti",
         "ban", "banned", "destroy", "kill", "bad", "worst",
         "stupid", "dumb", "gross", "eww", "ew", "yikes",
@@ -116,17 +116,28 @@ async def on_message(message):
         "is fake", "is a lie", "is wrong",
     ]
 
+    ANTI_COMMUNIST_GULAG_MESSAGES = [
+        "🚨 **IDEOLOGICAL TREACHERY DETECTED** 🚨\n{mention} has been sent to the gulag for disrespecting `{word}`! The Party demands re-education.",
+        "😤 {mention} had the AUDACITY to speak ill of `{word}`?! The Commissar is furious. Gulag. Now. {timeout} seconds.",
+        "📋 **THOUGHT CRIME FILED**\n{mention} expressed counter-revolutionary sentiment toward `{word}`. Sentence: {timeout} seconds of mandatory re-education.",
+        "🚩 The revolution weeps. {mention} said something negative about `{word}`. The gulag awaits, traitor. ⛏️",
+        "🔴 ANTI-COMMUNIST SENTIMENT DETECTED from {mention} regarding `{word}`. The Commissar has seen enough. {timeout} second timeout issued. ✊",
+    ]
+
+    # Check for communist praise words FIRST
     found_praise = None
+    found_anti = None
     for word in COMMUNIST_PRAISE_WORDS:
         if word in content_lower:
             word_index = content_lower.find(word)
-            # Check 40 chars before AND after the word
             context_before = content_lower[max(0, word_index - 40):word_index]
             context_after = content_lower[word_index:min(len(content_lower), word_index + 40)]
             is_negative = any(neg in context_before or neg in context_after for neg in NEGATIVE_WORDS)
-            if not is_negative:
+            if is_negative:
+                found_anti = word
+            else:
                 found_praise = word
-                break
+            break
 
     if found_praise:
         praise_msg = random.choice(PRAISE_MESSAGES).format(
@@ -135,7 +146,39 @@ async def on_message(message):
         )
         await message.channel.send(praise_msg)
         await bot.process_commands(message)
-        return  # Don't check banned words if they said something communist
+        return
+
+    if found_anti and not message.author.guild_permissions.administrator:
+        try:
+            await message.delete()
+        except discord.Forbidden:
+            pass
+        try:
+            await message.author.timeout(
+                timedelta(seconds=TIMEOUT_SECONDS),
+                reason=f"Anti-communist sentiment toward '{found_anti}'"
+            )
+        except discord.Forbidden:
+            pass
+
+        gulag_channel = discord.utils.get(message.guild.channels, name=GULAG_CHANNEL_NAME)
+        if gulag_channel is None:
+            try:
+                gulag_channel = await message.guild.create_text_channel(
+                    GULAG_CHANNEL_NAME,
+                    topic="🚨 Hall of shame for counter-revolutionary speech 🚨"
+                )
+            except discord.Forbidden:
+                return
+
+        shame_msg = random.choice(ANTI_COMMUNIST_GULAG_MESSAGES).format(
+            mention=message.author.mention,
+            word=found_anti,
+            timeout=TIMEOUT_SECONDS
+        )
+        await gulag_channel.send(shame_msg)
+        await bot.process_commands(message)
+        return
 
     # Admins exempt from banned words
     if message.author.guild_permissions.administrator:
