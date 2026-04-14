@@ -259,7 +259,7 @@ async def glory_command(interaction: discord.Interaction):
 
 
 # ── RUN ─────────────────────────────────────────────────────────────────────
-token = os.environ.get("DISCORD_TOKEN")
+token = "MTQ4NjQ4NzE3NTE2Mjc2MTM1Ng.GCLeC4.RIiLnrEk0rlHM_1uYLT4m41EZ9DT3p_kHDF-gs"
 if not token:
     raise ValueError("DISCORD_TOKEN environment variable not set!")
 
